@@ -66,7 +66,37 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                env_return = env.step(data)
+                try:
+                    env_return = env.step(data)
+                except ValueError as e:
+                    if "executing action in terminated episode" in str(e):
+                        # Episode is already terminated, return appropriate termination signal
+                        # Try to get current observation, fallback to reset if needed
+                        current_obs = None
+                        try:
+                            # Try to call reset to get a new observation
+                            reset_result = env.reset()
+                            if isinstance(reset_result, (tuple, list)) and len(reset_result) > 0:
+                                current_obs = reset_result[0]
+                            else:
+                                current_obs = reset_result
+                        except Exception:
+                            # If reset fails, try to get observation from environment state
+                            try:
+                                # For robosuite environments, try to get observation directly
+                                if hasattr(env, 'get_observation'):
+                                    current_obs = env.get_observation()
+                                elif hasattr(env, '_get_observation'):
+                                    current_obs = env._get_observation()
+                                else:
+                                    current_obs = None
+                            except Exception:
+                                current_obs = None
+                        # Return observation, reward=0, done=True, info={} (Gym format)
+                        env_return = (current_obs, 0.0, True, {"terminated_early": True})
+                    else:
+                        # Re-raise other ValueError exceptions
+                        raise e
                 if obs_bufs is not None:
                     _encode_obs(env_return[0], obs_bufs)
                     env_return = (None, *env_return[1:])
