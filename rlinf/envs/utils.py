@@ -58,17 +58,28 @@ def list_of_dict_to_dict_of_list(
     Convert a list of dictionaries to a dictionary of lists.
 
     Args:
-        list_of_dict: List of dictionaries with same keys
+        list_of_dict: List of dictionaries, may have different keys
 
     Returns:
-        Dictionary where each key maps to a list of values
+        Dictionary where each key maps to a list of values, with None for missing keys
     """
     if len(list_of_dict) == 0:
         return {}
-    keys = list_of_dict[0].keys()
-    output = {key: [] for key in keys}
+
+    # Collect all unique keys from all dictionaries
+    all_keys = set()
     for data in list_of_dict:
-        for key, item in data.items():
-            assert key in output
-            output[key].append(item)
+        all_keys.update(data.keys())
+
+    # Initialize output with all keys
+    output = {key: [] for key in all_keys}
+
+    # Fill in values for each dictionary
+    for data in list_of_dict:
+        for key in all_keys:
+            if key in data:
+                output[key].append(data[key])
+            else:
+                output[key].append(None)
+
     return output
